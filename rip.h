@@ -1,8 +1,10 @@
 #pragma once
 
 
-class RIP
-{
+class RIP {
 public:
-	void compiler(std::ifstream& file, const std::string filename);
+    void compile(std::ifstream& file, const std::string& filename);
+
+private:
+    void reportError(const std::string& message, int lineNumber, const std::string& line);
 };

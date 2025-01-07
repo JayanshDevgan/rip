@@ -1,13 +1,10 @@
 #include <iostream>
-#include <cstdio>
-#include <cstdlib>
 #include <fstream>
-#include <regex>
+#include <string>
 
 #include "rip.h"
 
-void RIP::compiler(std::ifstream& file, const std::string filename)
-{
+void RIP::compile(std::ifstream& file, const std::string& filename) {
     std::cout << "Compiling file: " << filename << std::endl;
 
     if (!file) {
@@ -15,19 +12,42 @@ void RIP::compiler(std::ifstream& file, const std::string filename)
         return;
     }
 
-    std::string cpp_filename = filename + ".cpp";
-    std::ofstream outputFile(cpp_filename);
+    std::ofstream outputFile(filename);
 
     if (!outputFile) {
-        std::cerr << "Error: Could not create " << cpp_filename << std::endl;
+        std::cerr << "Error: Could not create " << filename << std::endl;
         return;
     }
 
-    outputFile << "#include <iostream>" << std::endl;
-    outputFile << "int main() {" << std::endl;
-    
-    // TODO: Compiling the code here
+    std::string line;
+    int lineNumber = 1;
 
-    outputFile << "return 0;}" << std::endl;
+    if (file.eof()) {
+        std::cerr << "Error: the file is empty." << std::endl;
+    }
+    else {
+        while (std::getline(file, line)) {
+            if (file.fail()) {
+                std::cerr << "Error: Failed to read from file " << filename << std::endl;
+                break;
+            }
+
+            outputFile << line << std::endl;
+            std::cout << line << std::endl;
+            lineNumber++;
+        }
+    }
+
     outputFile.close();
+
+    if (outputFile.fail()) {
+        std::cerr << "Error: Failed to write to the file " << filename << std::endl;
+    }
+    else {
+        std::cout << "File " << filename << " successfully written." << std::endl;
+    }
+}
+
+void RIP::reportError(const std::string& message, int lineNumber, const std::string& line) {
+    std::cerr << "Error: " << message << " at line " << lineNumber << ":\n\t" << line << std::endl;
 }
