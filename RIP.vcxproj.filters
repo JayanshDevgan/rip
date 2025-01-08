@@ -24,6 +24,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ripper.rip" />
+    <None Include=".gitignore" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rip.h">

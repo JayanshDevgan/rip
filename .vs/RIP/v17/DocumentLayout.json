@@ -13,6 +13,10 @@
     {
       "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\ripper.rip||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:ripper.rip||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\ripc.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:ripc.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -25,8 +29,17 @@
           "SelectedChildIndex": 3,
           "Children": [
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ripc.cpp",
+              "DocumentMoniker": "C:\\dev\\RIP\\ripc.cpp",
+              "RelativeDocumentMoniker": "ripc.cpp",
+              "ToolTip": "C:\\dev\\RIP\\ripc.cpp",
+              "RelativeToolTip": "ripc.cpp",
+              "ViewState": "AgIAABYAAAAAAAAAAAAIwCcAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-01-07T15:39:07.8Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -38,7 +51,8 @@
               "RelativeToolTip": "ripper.rip",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-01-07T14:46:05.755Z"
+              "WhenOpened": "2025-01-07T14:46:05.755Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -48,9 +62,10 @@
               "RelativeDocumentMoniker": "rip.h",
               "ToolTip": "C:\\dev\\RIP\\rip.h",
               "RelativeToolTip": "rip.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAABqAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAABaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-01-06T21:33:19.582Z"
+              "WhenOpened": "2025-01-06T21:33:19.582Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -60,7 +75,7 @@
               "RelativeDocumentMoniker": "rip.cpp",
               "ToolTip": "C:\\dev\\RIP\\rip.cpp",
               "RelativeToolTip": "rip.cpp",
-              "ViewState": "AgIAADMAAAAAAAAAAAAAAEEAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAAABIAAAAPAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-01-06T21:03:08.202Z",
               "EditorCaption": ""

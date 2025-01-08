@@ -4,9 +4,18 @@
 
 #include "rip.h"
 
-void RIP::compile(std::ifstream& file, const std::string& filename) {
+void RIP::compile(const std::string& filename) {
     std::cout << "Compiling file: " << filename << std::endl;
 
+    size_t dotPosition = filename.find_last_of('.');
+
+    std::string newFilename;
+    if (dotPosition != std::string::npos) {
+        newFilename = filename.substr(0, dotPosition) + ".rip";
+    }
+
+    std::ifstream  file(newFilename);
+    
     if (!file) {
         std::cerr << "Error: Invalid file pointer." << std::endl;
         return;

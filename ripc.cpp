@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	if (strcmp(argv[1], "-help") == 0) {
+	if (strcmp(argv[1], "--help") == 0) {
 		std::cout << "Usage:" << std::endl;
 		std::cout << "  --help             \t\t\tShow this help message." << std::endl;
 		std::cout << "  --compile <file>   \t\t\tCompile the specified file." << std::endl;
@@ -47,20 +47,27 @@ int main(int argc, char* argv[])
 
 			RIP rip;
 			filename.append(".cpp");
-			rip.compile(inputFile, filename);
+			rip.compile(filename);
 
-			std::string compile_command = "g++ " + filename + " -o " + filename.substr(0, filename.find_last_of('.')) + ".exe";
-			int compile_result = std::system(compile_command.c_str());
-
-			if (compile_result == 0) {
-				std::cout << "Compilation successful." << std::endl;
-
-				if (std::remove(filename.c_str()) != 0) {
-					std::cout << "Error deleting the file " << filename << std::endl;
-				}
+			std::ifstream file(filename);
+			if (file.peek() == std::ifstream::traits_type::eof()) {
+				std::cout << "The file is empty." << std::endl;
+				return 0;
 			}
 			else {
-				std::cout << "Error during compilation of " << filename << std::endl;
+				std::string compile_command = "g++ " + filename + " -o " + filename.substr(0, filename.find_last_of('.')) + ".exe";
+				int compile_result = std::system(compile_command.c_str());
+
+				if (compile_result == 0) {
+					std::cout << "Compilation successful." << std::endl;
+
+					if (std::remove(filename.c_str()) != 0) {
+						std::cout << "Error deleting the file " << filename << std::endl;
+					}
+				}
+				else {
+					std::cout << "Error during compilation of " << filename << std::endl;
+				}
 			}
 		}
 		return 0;

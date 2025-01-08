@@ -131,6 +131,7 @@
     <ClCompile Include="ripc.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
     <None Include="ripper.rip" />
   </ItemGroup>
   <ItemGroup>
