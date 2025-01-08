@@ -3,20 +3,20 @@
   "WorkspaceRootPath": "C:\\dev\\RIP\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\rip.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:rip.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\ripc.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:ripc.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\rip.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:rip.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\rip.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:rip.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\ripper.rip||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:ripper.rip||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\ripc.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:ripc.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|C:\\dev\\RIP\\rip.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4DEBE0C6-C0A6-4624-B1DE-9DFA1F435165}|RIP.vcxproj|solutionrelative:rip.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -26,17 +26,17 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "ripc.cpp",
               "DocumentMoniker": "C:\\dev\\RIP\\ripc.cpp",
               "RelativeDocumentMoniker": "ripc.cpp",
               "ToolTip": "C:\\dev\\RIP\\ripc.cpp",
               "RelativeToolTip": "ripc.cpp",
-              "ViewState": "AgIAABYAAAAAAAAAAAAIwCcAAAAtAAAAAAAAAA==",
+              "ViewState": "AgIAADAAAAAAAAAAAAAAAD0AAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-01-07T15:39:07.8Z",
               "EditorCaption": ""
@@ -49,33 +49,33 @@
               "RelativeDocumentMoniker": "ripper.rip",
               "ToolTip": "C:\\dev\\RIP\\ripper.rip",
               "RelativeToolTip": "ripper.rip",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAUAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-01-07T14:46:05.755Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "rip.h",
               "DocumentMoniker": "C:\\dev\\RIP\\rip.h",
               "RelativeDocumentMoniker": "rip.h",
               "ToolTip": "C:\\dev\\RIP\\rip.h",
               "RelativeToolTip": "rip.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAABaAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAxAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2025-01-06T21:33:19.582Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "rip.cpp",
               "DocumentMoniker": "C:\\dev\\RIP\\rip.cpp",
               "RelativeDocumentMoniker": "rip.cpp",
               "ToolTip": "C:\\dev\\RIP\\rip.cpp",
               "RelativeToolTip": "rip.cpp",
-              "ViewState": "AgIAAA8AAAAAAAAAAAAAABIAAAAPAAAAAAAAAA==",
+              "ViewState": "AgIAAEUAAAAAAAAAAAAkwFkAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-01-06T21:03:08.202Z",
               "EditorCaption": ""

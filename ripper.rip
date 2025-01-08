@@ -1,6 +1,17 @@
 @import "stdio";
 
-int main() {
+
+// ENTERY POINT
+
+/*		
+
+THIS IS THE SUPPORT FOR MULTILINE COMMENTS
+
+*/
+
+
+def main() int {
+	println("RIP THE WORLD WITH NEW LINE!");
 	print("RIP THE WORLD!");
 	return 0;
 }

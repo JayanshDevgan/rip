@@ -1,12 +1,13 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <stack>
+#include <cctype>
+#include <algorithm>
 
 #include "rip.h"
 
-void RIP::compile(const std::string& filename) {
-    std::cout << "Compiling file: " << filename << std::endl;
-
+void RIP::compile(const std::string& filename, bool& isError) {
     size_t dotPosition = filename.find_last_of('.');
 
     std::string newFilename;
@@ -40,23 +41,137 @@ void RIP::compile(const std::string& filename) {
                 std::cerr << "Error: Failed to read from file " << filename << std::endl;
                 break;
             }
+            
+            size_t i = line.size() - 1;
 
-            outputFile << line << std::endl;
-            std::cout << line << std::endl;
+            for (size_t i = line.size() - 1; i > 0 && line[i] == ' '; i--) {}
+
+            bool insideMultilineComment = false;
+
+            checkLineEnd(line, lineNumber, isError, insideMultilineComment);
+            
+            //checkBrackets(file);
+
+            outputFile << convert(line) << std::endl;
             lineNumber++;
         }
     }
 
-    outputFile.close();
-
     if (outputFile.fail()) {
         std::cerr << "Error: Failed to write to the file " << filename << std::endl;
     }
-    else {
-        std::cout << "File " << filename << " successfully written." << std::endl;
-    }
+    
+    outputFile.close();
 }
 
 void RIP::reportError(const std::string& message, int lineNumber, const std::string& line) {
     std::cerr << "Error: " << message << " at line " << lineNumber << ":\n\t" << line << std::endl;
 }
+
+std::string RIP::convert(const std::string& line)
+{
+    if (line.find("@import") == 0) {
+        size_t start = line.find('"') + 1;
+        size_t end = line.find('"', start);
+
+        if (start != std::string::npos && end != std::string::npos) {
+            std::string filename = line.substr(start, end - start);
+            if (filename.find("stdio") != std::string::npos) {
+                return "#include <iostream>";
+            }
+            else {
+                return "#include \"" + filename + "\"";
+            }
+        }
+    }
+
+    if (line.find("def") != std::string::npos) {
+        size_t nameStart = line.find("def") + 4;
+        size_t nameEnd = line.find('(');
+        std::string functionName = line.substr(nameStart, nameEnd - nameStart);
+
+        size_t paramStart = nameEnd + 1;
+        size_t paramEnd = line.find(')', paramStart);
+        std::string parameters = line.substr(paramStart, paramEnd - paramStart);
+
+        size_t returnTypeStart = paramEnd + 1;
+        size_t returnTypeEnd = line.find('{', returnTypeStart);
+        std::string returnType = line.substr(returnTypeStart, returnTypeEnd - returnTypeStart);
+
+        return returnType + functionName + "(" + parameters + ") {";
+    }
+
+    if (line.find("print(") != std::string::npos) {
+        std::string content = line.substr(line.find('(') + 1);
+        content = content.substr(0, content.find(')'));
+        return "std::cout << " + content + ";";
+    }
+
+    if (line.find("println(") != std::string::npos) {
+        std::string content = line.substr(line.find('(') + 1);
+        content = content.substr(0, content.find(')'));
+        return "std::cout << " + content + " << std::endl;";
+    }
+
+    return line;
+}
+
+bool RIP::isMultilineCommentStart(const std::string line) {
+    return line.find("/*") != std::string::npos;
+}
+
+bool RIP::isMultilineCommentEnd(const std::string& line) {
+    return line.find("*/") != std::string::npos;
+}
+
+void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, bool& insideMultilineComment) {
+    if (insideMultilineComment) {
+        if (isMultilineCommentEnd(line)) {
+            insideMultilineComment = false;
+        }
+        return;
+    }
+
+    if (isMultilineCommentStart(line)) {
+        insideMultilineComment = true;
+        return;
+    }
+
+    if (line.empty() || line.front() == '/' || std::all_of(line.begin(), line.end(), ::isspace)) {
+        return;
+    }
+
+    if (line.back() == ';') {
+        return;
+    }
+
+    if (line.find("def ") == 0) {
+        if (line.back() != '{') {
+            std::cout << "Error: Missing '{' after function definition in line " << lineNumber << "\n\t" << line << std::endl;
+            isError = true;
+        }
+    }
+    else if (line.find(')') != std::string::npos) {
+        if (line.back() != ';') {
+            std::cout << "Error: Missing ';' for function call in line " << lineNumber << "\n\t" << line << std::endl;
+            isError = true;
+        }
+    }
+    else if (line.find('(') != std::string::npos) {
+        if (line.back() != '{') {
+            std::cout << "Error: Missing '{' after function definition in line " << lineNumber << "\n\t" << line << std::endl;
+            isError = true;
+        }
+    }
+    else if (line.back() == '}') {
+        if (line.size() > 1 && line[line.size() - 2] != ';') {
+            std::cout << "Error: Missing ';' before closing '}' in line " << lineNumber << "\n\t" << line << std::endl;
+            isError = true;
+        }
+    }
+    else if (line.back() != '{') {
+        std::cout << "Error: Missing '{' at the end of the line " << lineNumber << "\n\t" << line << std::endl;
+        isError = true;
+    }
+}
+
