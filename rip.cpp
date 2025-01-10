@@ -2,10 +2,16 @@
 #include <fstream>
 #include <string>
 #include <stack>
+#include <sstream>
 #include <cctype>
 #include <algorithm>
 
 #include "rip.h"
+
+std::string RIP::trimTrailingSpaces(const std::string& str) {
+    size_t end = str.find_last_not_of(" \t");
+    return (end == std::string::npos) ? "" : str.substr(0, end + 1);
+}
 
 void RIP::compile(const std::string& filename, bool& isError) {
     size_t dotPosition = filename.find_last_of('.');
@@ -15,8 +21,8 @@ void RIP::compile(const std::string& filename, bool& isError) {
         newFilename = filename.substr(0, dotPosition) + ".rip";
     }
 
-    std::ifstream  file(newFilename);
-    
+    std::ifstream file(newFilename);
+
     if (!file) {
         std::cerr << "Error: Invalid file pointer." << std::endl;
         return;
@@ -31,6 +37,7 @@ void RIP::compile(const std::string& filename, bool& isError) {
 
     std::string line;
     int lineNumber = 1;
+    bool insideMultilineComment = false;
 
     if (file.eof()) {
         std::cerr << "Error: the file is empty." << std::endl;
@@ -41,16 +48,11 @@ void RIP::compile(const std::string& filename, bool& isError) {
                 std::cerr << "Error: Failed to read from file " << filename << std::endl;
                 break;
             }
-            
-            size_t i = line.size() - 1;
 
-            for (size_t i = line.size() - 1; i > 0 && line[i] == ' '; i--) {}
-
-            bool insideMultilineComment = false;
+            // Trim trailing white spaces
+            line = trimTrailingSpaces(line);
 
             checkLineEnd(line, lineNumber, isError, insideMultilineComment);
-            
-            //checkBrackets(file);
 
             outputFile << convert(line) << std::endl;
             lineNumber++;
@@ -60,7 +62,7 @@ void RIP::compile(const std::string& filename, bool& isError) {
     if (outputFile.fail()) {
         std::cerr << "Error: Failed to write to the file " << filename << std::endl;
     }
-    
+
     outputFile.close();
 }
 
@@ -68,8 +70,7 @@ void RIP::reportError(const std::string& message, int lineNumber, const std::str
     std::cerr << "Error: " << message << " at line " << lineNumber << ":\n\t" << line << std::endl;
 }
 
-std::string RIP::convert(const std::string& line)
-{
+std::string RIP::convert(const std::string& line) {
     if (line.find("@import") == 0) {
         size_t start = line.find('"') + 1;
         size_t end = line.find('"', start);
@@ -124,6 +125,10 @@ bool RIP::isMultilineCommentEnd(const std::string& line) {
     return line.find("*/") != std::string::npos;
 }
 
+bool RIP::isSingleLineComment(const std::string& line) {
+    return line.find("//") != std::string::npos;
+}
+
 void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, bool& insideMultilineComment) {
     if (insideMultilineComment) {
         if (isMultilineCommentEnd(line)) {
@@ -137,11 +142,15 @@ void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, b
         return;
     }
 
+    if (isSingleLineComment(line)) {
+        return;
+    }
+
     if (line.empty() || line.front() == '/' || std::all_of(line.begin(), line.end(), ::isspace)) {
         return;
     }
 
-    if (line.back() == ';') {
+    if (line.back() == ';' || line.back() == '{' || line.back() == '}') {
         return;
     }
 
@@ -152,8 +161,8 @@ void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, b
         }
     }
     else if (line.find(')') != std::string::npos) {
-        if (line.back() != ';') {
-            std::cout << "Error: Missing ';' for function call in line " << lineNumber << "\n\t" << line << std::endl;
+        if (line.back() != ';' && line.back() != '{') {
+            std::cout << "Error: Missing ';' or '{' for function call in line " << lineNumber << "\n\t" << line << std::endl;
             isError = true;
         }
     }
@@ -174,4 +183,3 @@ void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, b
         isError = true;
     }
 }
-

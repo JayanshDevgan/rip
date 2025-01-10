@@ -1,17 +1,25 @@
 @import "stdio";
 
+def ripper () void {
+	int a = 10;
+	
+	if (a == 10) {
+	// PRINTING WITH NEW LINE
+		println("RIP THE WORLD WITH NEW LINE!");
+	}
+	else {
+		print("RIP THE WORLD WITHOUT NEW LINE!");
+	}
 
-// ENTERY POINT
-
-/*		
-
-THIS IS THE SUPPORT FOR MULTILINE COMMENTS
-
-*/
-
-
-def main() int {
-	println("RIP THE WORLD WITH NEW LINE!");
 	print("RIP THE WORLD!");
+}
+
+int main () {
+	//[1..100] -> Range function make it using pre build range function in cpp
+
+	for (int i = 0; i <= 10; i++) {
+		println(i);
+	}
+	ripper();
 	return 0;
 }
