@@ -70,7 +70,7 @@ void RIP::reportError(const std::string& message, int lineNumber, const std::str
 }
 
 std::string RIP::trim(const std::string& str) {
-    const std::string whitespace = " \t\n\r\f\v"; // Added \r
+    const std::string whitespace = " \t\n\r\f\v";
     size_t start = str.find_first_not_of(whitespace);
     if (start == std::string::npos) return "";
 
@@ -202,20 +202,18 @@ void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, b
         trimmedLine == "else" ||
         trimmedLine.find("for (") == 0 ||
         trimmedLine.find("while (") == 0 ||
-        trimmedLine == "do" || // For 'do' keyword followed by '{' on next line
-        trimmedLine == "do {" || // For 'do {' on the same line
+        trimmedLine == "do" ||
+        trimmedLine == "do {" ||
         trimmedLine == "{" ||
         trimmedLine == "}")
-        {
+    {
             return;
     }
 
-    // Special case for do-while's 'while (condition);' part
     if (trimmedLine.find("while (") != std::string::npos && trimmedLine.back() == ';') {
         return;
     }
 
-    // All other non-empty lines should end with a semicolon
     if (trimmedLine.back() != ';') {
         reportError("Missing ';' at end of statement", lineNumber, line);
         isError = true;
