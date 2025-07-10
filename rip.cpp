@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cctype>
 #include <algorithm>
+#include <vector>
 
 #include "rip.h"
 
@@ -15,54 +16,52 @@ std::string RIP::trimTrailingSpaces(const std::string& str) {
 
 void RIP::compile(const std::string& filename, bool& isError) {
     size_t dotPosition = filename.find_last_of('.');
-
-    std::string newFilename;
-    if (dotPosition != std::string::npos) {
-        newFilename = filename.substr(0, dotPosition) + ".rip";
-    }
-
+    std::string newFilename = (dotPosition != std::string::npos) ?
+        filename.substr(0, dotPosition) + ".rip" : filename + ".rip";
     std::ifstream file(newFilename);
-
     if (!file) {
-        std::cerr << "Error: Invalid file pointer." << std::endl;
+        std::cerr << "Error: Could not open file " << newFilename << std::endl;
         return;
     }
-
     std::ofstream outputFile(filename);
-
     if (!outputFile) {
-        std::cerr << "Error: Could not create " << filename << std::endl;
+        std::cerr << "Error: Could not create output file " << filename << std::endl;
         return;
     }
-
+    std::vector<std::string> lines;
     std::string line;
-    int lineNumber = 1;
+    while (std::getline(file, line)) {
+        lines.push_back(line);
+    }
     bool insideMultilineComment = false;
+    for (size_t i = 0; i < lines.size(); i++) {
+        std::string currentLine = lines[i];
+        std::string trimmedCurrentLine = trim(currentLine);
+        std::string nextLine = (i + 1 < lines.size()) ? lines[i + 1] : "";
 
-    if (file.eof()) {
-        std::cerr << "Error: the file is empty." << std::endl;
-    }
-    else {
-        while (std::getline(file, line)) {
-            if (file.fail()) {
-                std::cerr << "Error: Failed to read from file " << filename << std::endl;
-                break;
+        if (insideMultilineComment) {
+            if (isMultilineCommentEnd(currentLine)) {
+                insideMultilineComment = false;
             }
-
-            // Trim trailing white spaces
-            line = trimTrailingSpaces(line);
-
-            checkLineEnd(line, lineNumber, isError, insideMultilineComment);
-
-            outputFile << convert(line) << std::endl;
-            lineNumber++;
+            continue;
         }
-    }
+        if (isMultilineCommentStart(currentLine)) {
+            insideMultilineComment = true;
+            continue;
+        }
+        if (isSingleLineComment(currentLine) || trimmedCurrentLine.empty()) {
+            continue;
+        }
 
-    if (outputFile.fail()) {
-        std::cerr << "Error: Failed to write to the file " << filename << std::endl;
-    }
+        if (trimmedCurrentLine == "{" || trimmedCurrentLine == "}") {
+            outputFile << currentLine << std::endl;
+            continue;
+        }
 
+        std::string converted = convert(currentLine);
+        checkLineEnd(converted, i + 1, isError, insideMultilineComment, nextLine);
+        outputFile << converted << std::endl;
+    }
     outputFile.close();
 }
 
@@ -70,51 +69,98 @@ void RIP::reportError(const std::string& message, int lineNumber, const std::str
     std::cerr << "Error: " << message << " at line " << lineNumber << ":\n\t" << line << std::endl;
 }
 
-std::string RIP::convert(const std::string& line) {
-    if (line.find("@import") == 0) {
-        size_t start = line.find('"') + 1;
-        size_t end = line.find('"', start);
+std::string RIP::trim(const std::string& str) {
+    const std::string whitespace = " \t\n\r\f\v"; // Added \r
+    size_t start = str.find_first_not_of(whitespace);
+    if (start == std::string::npos) return "";
 
+    size_t end = str.find_last_not_of(whitespace);
+    return str.substr(start, end - start + 1);
+}
+
+std::string RIP::convert(const std::string& line) {
+    std::string trimmed = trim(line);
+    std::string convertedLine = line;
+
+    if (trimmed.find("@import") == 0) {
+        size_t start = trimmed.find('"') + 1;
+        size_t end = trimmed.find('"', start);
         if (start != std::string::npos && end != std::string::npos) {
-            std::string filename = line.substr(start, end - start);
-            if (filename.find("stdio") != std::string::npos) {
-                return "#include <iostream>";
-            }
-            else {
-                return "#include \"" + filename + "\"";
-            }
+            std::string filename = trimmed.substr(start, end - start);
+            return (filename.find("stdio") != std::string::npos) ?
+                "#include <iostream>" : "#include \"" + filename + "\"";
         }
     }
 
-    if (line.find("def") != std::string::npos) {
-        size_t nameStart = line.find("def") + 4;
-        size_t nameEnd = line.find('(');
-        std::string functionName = line.substr(nameStart, nameEnd - nameStart);
+    if (trimmed.find("def ") == 0) {
+        size_t nameStart = trimmed.find(' ') + 1;
+        size_t nameEnd = trimmed.find('(', nameStart);
+        if (nameEnd != std::string::npos) {
+            std::string funcName = trimmed.substr(nameStart, nameEnd - nameStart);
+            size_t paramsEnd = trimmed.find(')', nameEnd);
+            std::string params = trimmed.substr(nameEnd + 1, paramsEnd - nameEnd - 1);
+            size_t returnTypeStart = paramsEnd + 1;
+            std::string returnType = trim(trimmed.substr(returnTypeStart));
 
-        size_t paramStart = nameEnd + 1;
-        size_t paramEnd = line.find(')', paramStart);
-        std::string parameters = line.substr(paramStart, paramEnd - paramStart);
-
-        size_t returnTypeStart = paramEnd + 1;
-        size_t returnTypeEnd = line.find('{', returnTypeStart);
-        std::string returnType = line.substr(returnTypeStart, returnTypeEnd - returnTypeStart);
-
-        return returnType + functionName + "(" + parameters + ") {";
+            if (!returnType.empty() && returnType.back() == '{') {
+                returnType.pop_back();
+                returnType = trim(returnType);
+            }
+            size_t defPos = line.find("def ");
+            if (defPos != std::string::npos) {
+                convertedLine = line.substr(0, defPos) + returnType + " " + funcName + "(" + params + ")";
+            }
+        }
+    }
+    else if (trimmed.find("if (") == 0 ||
+        trimmed == "else" ||
+        trimmed.find("for (") == 0 ||
+        trimmed.find("while (") == 0 ||
+        trimmed == "do") {
+        convertedLine = line;
+    }
+    else if (trimmed.find("print(") == 0) {
+        size_t contentStart = trimmed.find('(') + 1;
+        size_t contentEnd = trimmed.find(')', contentStart);
+        if (contentEnd != std::string::npos) {
+            std::string content = trimmed.substr(contentStart, contentEnd - contentStart);
+            convertedLine = line.substr(0, line.find("print(")) + "std::cout << " + content + ";";
+        }
+    }
+    else if (trimmed.find("println(") == 0) {
+        size_t contentStart = trimmed.find('(') + 1;
+        size_t contentEnd = trimmed.find(')', contentStart);
+        if (contentEnd != std::string::npos) {
+            std::string content = trimmed.substr(contentStart, contentEnd - contentStart);
+            convertedLine = line.substr(0, line.find("println(")) + "std::cout << " + content + " << std::endl;";
+        }
     }
 
-    if (line.find("print(") != std::string::npos) {
-        std::string content = line.substr(line.find('(') + 1);
-        content = content.substr(0, content.find(')'));
-        return "std::cout << " + content + ";";
+    size_t pos = 0;
+    while ((pos = convertedLine.find("boolean", pos)) != std::string::npos) {
+        if ((pos == 0 || !std::isalpha(convertedLine[pos - 1])) &&
+            (pos + 7 == convertedLine.length() || !std::isalpha(convertedLine[pos + 7]))) {
+            convertedLine.replace(pos, 7, "bool");
+            pos += 4;
+        }
+        else {
+            pos += 7;
+        }
     }
 
-    if (line.find("println(") != std::string::npos) {
-        std::string content = line.substr(line.find('(') + 1);
-        content = content.substr(0, content.find(')'));
-        return "std::cout << " + content + " << std::endl;";
+    pos = 0;
+    while ((pos = convertedLine.find("string", pos)) != std::string::npos) {
+        if ((pos == 0 || !std::isalpha(convertedLine[pos - 1])) &&
+            (pos + 6 == convertedLine.length() || !std::isalpha(convertedLine[pos + 6]))) {
+            convertedLine.replace(pos, 6, "std::string");
+            pos += 11;
+        }
+        else {
+            pos += 6;
+        }
     }
 
-    return line;
+    return convertedLine;
 }
 
 bool RIP::isMultilineCommentStart(const std::string line) {
@@ -129,7 +175,7 @@ bool RIP::isSingleLineComment(const std::string& line) {
     return line.find("//") != std::string::npos;
 }
 
-void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, bool& insideMultilineComment) {
+void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, bool& insideMultilineComment, const std::string& nextLine) {
     if (insideMultilineComment) {
         if (isMultilineCommentEnd(line)) {
             insideMultilineComment = false;
@@ -142,44 +188,36 @@ void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, b
         return;
     }
 
-    if (isSingleLineComment(line)) {
+    std::string trimmedLine = trim(line);
+
+    if (trimmedLine.empty() || trimmedLine.front() == '/' || trimmedLine.find("#include") == 0) {
         return;
     }
 
-    if (line.empty() || line.front() == '/' || std::all_of(line.begin(), line.end(), ::isspace)) {
+    // Lines that are block starters (function definitions, if, else, for, while, do)
+    // or standalone braces should not require a semicolon.
+    if ((trimmedLine.find("void ") == 0 && trimmedLine.find("(") != std::string::npos) ||
+        (trimmedLine.find("int ") == 0 && trimmedLine.find("main") != std::string::npos) ||
+        trimmedLine.find("if (") == 0 ||
+        trimmedLine == "else" ||
+        trimmedLine.find("for (") == 0 ||
+        trimmedLine.find("while (") == 0 ||
+        trimmedLine == "do" || // For 'do' keyword followed by '{' on next line
+        trimmedLine == "do {" || // For 'do {' on the same line
+        trimmedLine == "{" ||
+        trimmedLine == "}")
+        {
+            return;
+    }
+
+    // Special case for do-while's 'while (condition);' part
+    if (trimmedLine.find("while (") != std::string::npos && trimmedLine.back() == ';') {
         return;
     }
 
-    if (line.back() == ';' || line.back() == '{' || line.back() == '}') {
-        return;
-    }
-
-    if (line.find("def ") == 0) {
-        if (line.back() != '{') {
-            std::cout << "Error: Missing '{' after function definition in line " << lineNumber << "\n\t" << line << std::endl;
-            isError = true;
-        }
-    }
-    else if (line.find(')') != std::string::npos) {
-        if (line.back() != ';' && line.back() != '{') {
-            std::cout << "Error: Missing ';' or '{' for function call in line " << lineNumber << "\n\t" << line << std::endl;
-            isError = true;
-        }
-    }
-    else if (line.find('(') != std::string::npos) {
-        if (line.back() != '{') {
-            std::cout << "Error: Missing '{' after function definition in line " << lineNumber << "\n\t" << line << std::endl;
-            isError = true;
-        }
-    }
-    else if (line.back() == '}') {
-        if (line.size() > 1 && line[line.size() - 2] != ';') {
-            std::cout << "Error: Missing ';' before closing '}' in line " << lineNumber << "\n\t" << line << std::endl;
-            isError = true;
-        }
-    }
-    else if (line.back() != '{') {
-        std::cout << "Error: Missing '{' at the end of the line " << lineNumber << "\n\t" << line << std::endl;
+    // All other non-empty lines should end with a semicolon
+    if (trimmedLine.back() != ';') {
+        reportError("Missing ';' at end of statement", lineNumber, line);
         isError = true;
     }
 }
