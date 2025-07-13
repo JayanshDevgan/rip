@@ -1,0 +1,14 @@
+#normal_datatypes {
+void
+int
+float
+char
+string
+}
+
+#array_datatypes {
+int
+float
+char
+string
+}

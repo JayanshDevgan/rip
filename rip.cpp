@@ -4,35 +4,120 @@
 #include <stack>
 #include <sstream>
 #include <cctype>
+#include <regex>
 #include <algorithm>
 #include <vector>
+#include <chrono>
+#include <random>
+#include <set>
 
 #include "rip.h"
+
+std::vector<std::string> RIP::splitParameters(const std::string& paramsStr) {
+    std::vector<std::string> paramList;
+    std::stringstream ss(paramsStr);
+    std::string segment;
+    while (std::getline(ss, segment, ',')) {
+        paramList.push_back(trim(segment));
+    }
+    return paramList;
+}
 
 std::string RIP::trimTrailingSpaces(const std::string& str) {
     size_t end = str.find_last_not_of(" \t");
     return (end == std::string::npos) ? "" : str.substr(0, end + 1);
 }
 
+std::string RIP::generate_unique_id() {
+    using namespace std::chrono;
+    static std::mt19937 gen(system_clock::now().time_since_epoch().count());
+    static std::uniform_int_distribution<int> dist(1000, 9999);
+    return "_vec_" + std::to_string(dist(gen)) + "_" + std::to_string(time(nullptr));
+}
+
+void RIP::loadDataTypes(const std::string& archFilename, bool& isError) {
+    std::ifstream file(archFilename);
+    if (!file) {
+        std::cerr << "Error: Could not open architecture file " << archFilename << std::endl;
+        isError = true;
+        return;
+    }
+
+    std::string line;
+    enum { NONE, NORMAL, ARRAY } currentBlock = NONE;
+
+    while (std::getline(file, line)) {
+        std::string trimmedLine = trim(line);
+
+        if (trimmedLine == "#normal_datatypes {") {
+            currentBlock = NORMAL;
+            continue;
+        }
+        else if (trimmedLine == "#array_datatypes {") {
+            currentBlock = ARRAY;
+            continue;
+        }
+        else if (trimmedLine == "}") {
+            currentBlock = NONE;
+            continue;
+        }
+
+        if (currentBlock == NORMAL && !trimmedLine.empty()) {
+            normalDataTypes.insert(trimmedLine);
+        }
+        else if (currentBlock == ARRAY && !trimmedLine.empty()) {
+            arrayDataTypes.insert(trimmedLine);
+        }
+    }
+    file.close();
+
+    if (normalDataTypes.empty() && arrayDataTypes.empty()) {
+        std::cerr << "Warning: No data types loaded from " << archFilename << ". Please check the file format and content." << std::endl;
+    }
+}
+
+bool RIP::isNormalDataType(const std::string& type) {
+    if (type == "void") return true;
+    return normalDataTypes.count(type);
+}
+
+bool RIP::isArrayDataType(const std::string& type) {
+    return arrayDataTypes.count(type);
+}
+
 void RIP::compile(const std::string& filename, bool& isError) {
+    isError = false;
+
+    std::string archFilename = ".riparch";
+    loadDataTypes(archFilename, isError);
+    if (isError) {
+        std::cerr << "Compilation aborted due to errors in architecture file: " << archFilename << std::endl;
+        return;
+    }
+
     size_t dotPosition = filename.find_last_of('.');
     std::string newFilename = (dotPosition != std::string::npos) ?
         filename.substr(0, dotPosition) + ".rip" : filename + ".rip";
     std::ifstream file(newFilename);
     if (!file) {
-        std::cerr << "Error: Could not open file " << newFilename << std::endl;
+        std::cerr << "Error: Could not open input file " << newFilename << std::endl;
+        isError = true;
         return;
     }
     std::ofstream outputFile(filename);
     if (!outputFile) {
         std::cerr << "Error: Could not create output file " << filename << std::endl;
+        isError = true;
+        file.close();
         return;
     }
+
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(file, line)) {
         lines.push_back(line);
     }
+
     bool insideMultilineComment = false;
     for (size_t i = 0; i < lines.size(); i++) {
         std::string currentLine = lines[i];
@@ -58,11 +143,26 @@ void RIP::compile(const std::string& filename, bool& isError) {
             continue;
         }
 
-        std::string converted = convert(currentLine);
+        std::string converted = convert(currentLine, i + 1, isError);
+        if (isError) {
+            std::cerr << "Compilation aborted due to conversion errors." << std::endl;
+            outputFile.close();
+            file.close();
+            return;
+        }
+
         checkLineEnd(converted, i + 1, isError, insideMultilineComment, nextLine);
+        if (isError) {
+            std::cerr << "Compilation aborted due to line ending errors." << std::endl;
+            outputFile.close();
+            file.close();
+            return;
+        }
         outputFile << converted << std::endl;
     }
+
     outputFile.close();
+    file.close();
 }
 
 void RIP::reportError(const std::string& message, int lineNumber, const std::string& line) {
@@ -78,7 +178,7 @@ std::string RIP::trim(const std::string& str) {
     return str.substr(start, end - start + 1);
 }
 
-std::string RIP::convert(const std::string& line) {
+std::string RIP::convert(const std::string& line, int lineNumber, bool& isError) {
     std::string trimmed = trim(line);
     std::string convertedLine = line;
 
@@ -88,10 +188,10 @@ std::string RIP::convert(const std::string& line) {
         if (start != std::string::npos && end != std::string::npos) {
             std::string filename = trimmed.substr(start, end - start);
             return (filename.find("stdio") != std::string::npos) ?
-                "#include <iostream>" : "#include \"" + filename + "\"";
+                "#include<iostream>\n#include<vector>\n#include<string>\n" : "#include \"" + filename + "\"";
         }
     }
-
+    
     if (trimmed.find("def ") == 0) {
         size_t nameStart = trimmed.find(' ') + 1;
         size_t nameEnd = trimmed.find('(', nameStart);
@@ -106,19 +206,208 @@ std::string RIP::convert(const std::string& line) {
                 returnType.pop_back();
                 returnType = trim(returnType);
             }
+
+            std::string lookupReturnType = returnType;
+            if (lookupReturnType == "string") {
+                lookupReturnType = "std::string";
+            }
+            if (!isNormalDataType(lookupReturnType)) {
+                reportError("Invalid return type '" + returnType + "' for function '" + funcName + "'", lineNumber, line);
+                isError = true;
+                return "";
+            }
+
+            std::vector<std::string> paramSegments = splitParameters(params);
+            std::string convertedParams = "";
+            for (size_t i = 0; i < paramSegments.size(); ++i) {
+                const std::string& paramSegment = paramSegments[i];
+                if (paramSegment.empty()) continue;
+
+                size_t spacePos = paramSegment.find(' ');
+                if (spacePos != std::string::npos) {
+                    std::string paramType = trim(paramSegment.substr(0, spacePos));
+                    std::string paramName = trim(paramSegment.substr(spacePos + 1));
+
+                    std::string lookupParamType = paramType;
+                    if (lookupParamType == "string") {
+                        lookupParamType = "std::string";
+                    }
+
+                    if (!isNormalDataType(lookupParamType)) {
+                        reportError("Invalid parameter type '" + paramType + "' in function '" + funcName + "'", lineNumber, line);
+                        isError = true;
+                        return "";
+                    }
+                    convertedParams += (paramType == "string" ? "std::string" : paramType) + " " + paramName;
+                }
+                else {
+                    reportError("Invalid parameter format '" + paramSegment + "' in function '" + funcName + "'. Expected 'type name'.", lineNumber, line);
+                    isError = true;
+                    return "";
+                }
+                if (i < paramSegments.size() - 1) {
+                    convertedParams += ", ";
+                }
+            }
+
             size_t defPos = line.find("def ");
             if (defPos != std::string::npos) {
-                convertedLine = line.substr(0, defPos) + returnType + " " + funcName + "(" + params + ")";
+                convertedLine = line.substr(0, defPos) + (returnType == "string" ? "std::string" : returnType) + " " + funcName + "(" + convertedParams + ")";
             }
         }
     }
+    
+    std::regex array_decl_regex(R"(^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\[\]\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(.*)$)");
+    std::smatch matches;
+    if (std::regex_match(trimmed, matches, array_decl_regex)) {
+        std::string type = matches[1].str();
+        std::string var_name = matches[2].str();
+        std::string remainder = matches[3].str();
+
+        std::string lookupType = type;
+        if (lookupType == "string") {
+            lookupType = "std::string";
+        }
+
+        if (!isArrayDataType(lookupType)) {
+            reportError("Invalid array data type '" + type + "'. Type not found in array_datatypes.", lineNumber, line);
+            isError = true;
+            return "";
+        }
+
+        convertedLine = "std::vector<" + (type == "string" ? "std::string" : type) + "> " + var_name + remainder;
+        return convertedLine;
+    }
+
+
+    // Handle range expressions (e.g., "[1..5]" or "[1..(6+i)]")
+    size_t original_bracket_open_pos = line.find("[");
+    size_t original_bracket_close_pos = line.find("]", original_bracket_open_pos);
+
+    if (original_bracket_open_pos != std::string::npos &&
+        original_bracket_close_pos != std::string::npos &&
+        line.substr(original_bracket_open_pos, original_bracket_close_pos - original_bracket_open_pos + 1).find("..") != std::string::npos) {
+
+        std::string range_expr_content = line.substr(original_bracket_open_pos + 1, original_bracket_close_pos - original_bracket_open_pos - 1);
+        size_t dots_pos = range_expr_content.find("..");
+
+        if (dots_pos != std::string::npos) {
+            std::string start_str = trim(range_expr_content.substr(0, dots_pos));
+            std::string end_str = trim(range_expr_content.substr(dots_pos + 2));
+
+            std::string type = "int";
+            if (start_str.find('.') != std::string::npos || end_str.find('.') != std::string::npos) {
+                type = "double";
+            }
+            else if ((start_str.length() > 1 && start_str.front() == '"' && start_str.back() == '"') ||
+                (end_str.length() > 1 && end_str.front() == '"' && end_str.back() == '"')) {
+                type = "std::string";
+            }
+
+            std::string lookupRangeType = type;
+            if (lookupRangeType == "string") {
+                lookupRangeType = "std::string";
+            }
+            if (!isNormalDataType(lookupRangeType)) {
+                reportError("Invalid type inferred for range expression. Type '" + type + "' not found in normal_datatypes.", lineNumber, line);
+                isError = true;
+                return "";
+            }
+
+            std::string id = generate_unique_id(); // Unique ID for the lambda variable
+
+            // Construct the C++ lambda to generate the vector for the range
+            std::string range_vec_lambda = "[&]() { std::vector<" + type + "> v" + id + ";";
+            range_vec_lambda += type + " start_val = " + start_str + "; "; // Use 'start_val' to avoid potential conflicts
+            range_vec_lambda += type + " end_val = " + end_str + "; ";     // Use 'end_val' to avoid potential conflicts
+
+            // Handle ascending and descending ranges
+            range_vec_lambda += "if (start_val <= end_val) { ";
+            range_vec_lambda += "for(" + type + " i = start_val; i <= end_val; ++i) { ";
+            range_vec_lambda += "v" + id + ".push_back(i); ";
+            range_vec_lambda += "} } else { "; // Descending range
+            range_vec_lambda += "for(" + type + " i = start_val; i >= end_val; --i) { ";
+            range_vec_lambda += "v" + id + ".push_back(i); ";
+            range_vec_lambda += "} }"; // Close else and if blocks
+
+            range_vec_lambda += " return v" + id + "; }()"; // Immediate invocation of the lambda
+
+            // Perform the replacement in the original line
+            convertedLine = line.substr(0, original_bracket_open_pos) + range_vec_lambda + line.substr(original_bracket_close_pos + 1);
+            return convertedLine; // Return immediately after successful conversion
+        }
+    }
+
+
+    // Handle range-based for loops (e.g., "for (int i : [1..10]) {")
+    // This block converts RIP's range-based for to a traditional C++ for loop over a generated vector.
+    else if (trimmed.find("for (") == 0 && trimmed.find(":[") != std::string::npos) {
+        size_t parenStart = trimmed.find('(');
+        size_t colonPos = trimmed.find(':', parenStart);
+        size_t bracketOpen = trimmed.find('[', colonPos);
+        size_t bracketClose = trimmed.find(']', bracketOpen);
+
+        if (parenStart != std::string::npos && colonPos != std::string::npos &&
+            bracketOpen != std::string::npos && bracketClose != std::string::npos) {
+
+            std::string loop_var_decl = trimmed.substr(parenStart + 1, colonPos - (parenStart + 1));
+            std::string rangeStr = trimmed.substr(bracketOpen + 1, bracketClose - (bracketOpen + 1));
+
+            std::string varType;
+            std::string varName;
+            size_t lastSpaceInDecl = loop_var_decl.find_last_of(' ');
+            if (lastSpaceInDecl != std::string::npos) {
+                varType = trim(loop_var_decl.substr(0, lastSpaceInDecl));
+                varName = trim(loop_var_decl.substr(lastSpaceInDecl + 1));
+            }
+            else {
+                reportError("Invalid loop variable declaration in for loop: '" + loop_var_decl + "'. Expected 'type name'.", lineNumber, line);
+                isError = true;
+                return "";
+            }
+
+            size_t dotsPos = rangeStr.find("..");
+            if (dotsPos != std::string::npos) {
+                std::string start_expr = trim(rangeStr.substr(0, dotsPos));
+                std::string end_expr = trim(rangeStr.substr(dotsPos + 2));
+
+                // Type validation for loop variable
+                std::string lookupVarType = varType;
+                if (lookupVarType == "string") {
+                    lookupVarType = "std::string";
+                }
+                if (!isNormalDataType(lookupVarType)) {
+                    reportError("Invalid loop variable type '" + varType + "' in for loop", lineNumber, line);
+                    isError = true;
+                    return "";
+                }
+
+                // Generate a temporary vector using a lambda for the range
+                std::string id = generate_unique_id();
+                std::string temp_vec_creation = "([&]() { std::vector<" + (varType == "string" ? "std::string" : varType) + "> v" + id + ";";
+                temp_vec_creation += (varType == "string" ? "std::string" : varType) + " start_val = " + start_expr + "; ";
+                temp_vec_creation += (varType == "string" ? "std::string" : varType) + " end_val = " + end_expr + "; ";
+
+                // Handle ascending and descending ranges for the loop
+                temp_vec_creation += "if (start_val <= end_val) { for(" + (varType == "string" ? "std::string" : varType) + " i = start_val; i <= end_val; ++i) { v" + id + ".push_back(i); } } else { for(" + (varType == "string" ? "std::string" : varType) + " i = start_val; i >= end_val; --i) { v" + id + ".push_back(i); } }";
+                temp_vec_creation += " return v" + id + "; }())"; // Immediate invocation
+
+                // Generate C++ range-based for loop over the temporary vector
+                std::string prefix = line.substr(0, line.find("for")); // Preserve leading indentation
+                convertedLine = prefix + "for (" + (varType == "string" ? "std::string" : varType) + " " + varName + " : " + temp_vec_creation + ") {";
+                return convertedLine;
+            }
+        }
+    }
+
     else if (trimmed.find("if (") == 0 ||
         trimmed == "else" ||
-        trimmed.find("for (") == 0 ||
+        trimmed.find("for (") == 0 || 
         trimmed.find("while (") == 0 ||
         trimmed == "do") {
-        convertedLine = line;
+        convertedLine = line; 
     }
+
     else if (trimmed.find("print(") == 0) {
         size_t contentStart = trimmed.find('(') + 1;
         size_t contentEnd = trimmed.find(')', contentStart);
@@ -127,36 +416,15 @@ std::string RIP::convert(const std::string& line) {
             convertedLine = line.substr(0, line.find("print(")) + "std::cout << " + content + ";";
         }
     }
+
     else if (trimmed.find("println(") == 0) {
         size_t contentStart = trimmed.find('(') + 1;
         size_t contentEnd = trimmed.find(')', contentStart);
         if (contentEnd != std::string::npos) {
             std::string content = trimmed.substr(contentStart, contentEnd - contentStart);
-            convertedLine = line.substr(0, line.find("println(")) + "std::cout << " + content + " << std::endl;";
-        }
-    }
-
-    size_t pos = 0;
-    while ((pos = convertedLine.find("boolean", pos)) != std::string::npos) {
-        if ((pos == 0 || !std::isalpha(convertedLine[pos - 1])) &&
-            (pos + 7 == convertedLine.length() || !std::isalpha(convertedLine[pos + 7]))) {
-            convertedLine.replace(pos, 7, "bool");
-            pos += 4;
-        }
-        else {
-            pos += 7;
-        }
-    }
-
-    pos = 0;
-    while ((pos = convertedLine.find("string", pos)) != std::string::npos) {
-        if ((pos == 0 || !std::isalpha(convertedLine[pos - 1])) &&
-            (pos + 6 == convertedLine.length() || !std::isalpha(convertedLine[pos + 6]))) {
-            convertedLine.replace(pos, 6, "std::string");
-            pos += 11;
-        }
-        else {
-            pos += 6;
+            if (content != "")
+                convertedLine = line.substr(0, line.find("println(")) + "std::cout << " + content + " << std::endl;";
+            else convertedLine = line.substr(0, line.find("println(")) + "std::cout << std::endl;";
         }
     }
 
@@ -190,30 +458,49 @@ void RIP::checkLineEnd(const std::string& line, int lineNumber, bool& isError, b
 
     std::string trimmedLine = trim(line);
 
-    if (trimmedLine.empty() || trimmedLine.front() == '/' || trimmedLine.find("#include") == 0) {
+    // Lines that inherently do not require a semicolon:
+    // 1. Empty lines
+    if (trimmedLine.empty()) {
         return;
     }
 
-    // Lines that are block starters (function definitions, if, else, for, while, do)
-    // or standalone braces should not require a semicolon.
-    if ((trimmedLine.find("void ") == 0 && trimmedLine.find("(") != std::string::npos) ||
-        (trimmedLine.find("int ") == 0 && trimmedLine.find("main") != std::string::npos) ||
-        trimmedLine.find("if (") == 0 ||
-        trimmedLine == "else" ||
-        trimmedLine.find("for (") == 0 ||
-        trimmedLine.find("while (") == 0 ||
-        trimmedLine == "do" ||
-        trimmedLine == "do {" ||
-        trimmedLine == "{" ||
-        trimmedLine == "}")
-    {
-            return;
+    // 2. Comments (single-line or multi-line parts)
+    if (trimmedLine.find("//") == 0 || trimmedLine.find("/*") == 0 || trimmedLine.find("*/") != std::string::npos) {
+        return;
     }
 
+    // 3. Preprocessor directives
+    if (trimmedLine.find("#") == 0) {
+        return;
+    }
+
+    // 4. Standalone braces
+    if (trimmedLine == "{" || trimmedLine == "}") {
+        return;
+    }
+
+    if ((trimmedLine.find("if (") == 0 ||
+        trimmedLine.find("for (") == 0 ||
+        trimmedLine.find("while (") == 0 ||
+        trimmedLine == "else" ||
+        trimmedLine == "do" ||
+        trimmedLine == "do {") &&
+        trimmedLine.back() != ';')
+    {
+        return;
+    }
+
+    std::regex func_def_regex(R"(^\s*([a-zA-Z_][a-zA-Z0-9_:]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^\)]*\)\s*$)");
+    if (std::regex_match(trimmedLine, func_def_regex)) {
+        return;
+    }
+
+    // Special case for `while (condition);` (valid C++ single-line loop)
     if (trimmedLine.find("while (") != std::string::npos && trimmedLine.back() == ';') {
         return;
     }
 
+    // If none of the above conditions apply, the line *should* end with a semicolon.
     if (trimmedLine.back() != ';') {
         reportError("Missing ';' at end of statement", lineNumber, line);
         isError = true;
