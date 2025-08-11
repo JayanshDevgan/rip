@@ -13,6 +13,14 @@
 
 #include "rip.h"
 
+static std::vector<int> make_range(int start, int end) {
+    std::vector<int> result;
+    for (int i = start; i <= end; ++i) {
+        result.push_back(i);
+    }
+    return result;
+}
+
 std::vector<std::string> RIP::splitParameters(const std::string& paramsStr) {
     std::vector<std::string> paramList;
     std::stringstream ss(paramsStr);
@@ -256,6 +264,36 @@ std::string RIP::convert(const std::string& line, int lineNumber, bool& isError)
             }
         }
     }
+
+    // Range Expression
+    std::regex array_decl_with_range_regex(R"(^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\[\]\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*\[(.*?)\]\s*;?\s*$)");
+    std::smatch array_matches;
+    if (std::regex_match(trimmed, array_matches, array_decl_with_range_regex)) {
+        std::string type = array_matches[1].str();
+        std::string var_name = array_matches[2].str();
+        std::string range_expr_content = array_matches[3].str();
+        size_t dots_pos = range_expr_content.find("..");
+
+        if (dots_pos != std::string::npos) {
+            std::string start_str = trim(range_expr_content.substr(0, dots_pos));
+            std::string end_str = trim(range_expr_content.substr(dots_pos + 2));
+
+            std::string id = generate_unique_id();
+            std::string cpp_type = (type == "string" ? "std::string" : type);
+            std::string temp_vec_creation = "([&]() { std::vector<" + cpp_type + "> v" + id + ";";
+            temp_vec_creation += cpp_type + " start_val = " + start_str + "; ";
+            temp_vec_creation += cpp_type + " end_val = " + end_str + "; ";
+
+            temp_vec_creation += "if (start_val <= end_val) { ";
+            temp_vec_creation += "for(" + cpp_type + " i = start_val; i <= end_val; ++i) { v" + id + ".push_back(i); } ";
+            temp_vec_creation += "} else { ";
+            temp_vec_creation += "for(" + cpp_type + " i = start_val; i >= end_val; --i) { v" + id + ".push_back(i); } ";
+            temp_vec_creation += "} return v" + id + "; }())";
+
+            convertedLine = line.substr(0, line.find(trimmed)) + "std::vector<" + cpp_type + "> " + var_name + " = " + temp_vec_creation + ";";
+            return convertedLine;
+        }
+    }
     
     std::regex array_decl_regex(R"(^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\[\]\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(.*)$)");
     std::smatch matches;
@@ -295,46 +333,66 @@ std::string RIP::convert(const std::string& line, int lineNumber, bool& isError)
             std::string start_str = trim(range_expr_content.substr(0, dots_pos));
             std::string end_str = trim(range_expr_content.substr(dots_pos + 2));
 
+            auto isIntegerLiteral = [](const std::string& s) {
+                return !s.empty() && std::all_of(s.begin(), s.end(), [](unsigned char c) {
+                    return std::isdigit(c) || c == '-' || c == '+';
+                });
+            };
+
             std::string type = "int";
             if (start_str.find('.') != std::string::npos || end_str.find('.') != std::string::npos) {
                 type = "double";
             }
-            else if ((start_str.length() > 1 && start_str.front() == '"' && start_str.back() == '"') ||
-                (end_str.length() > 1 && end_str.front() == '"' && end_str.back() == '"')) {
-                type = "std::string";
-            }
 
             std::string lookupRangeType = type;
-            if (lookupRangeType == "string") {
-                lookupRangeType = "std::string";
-            }
+            if (lookupRangeType == "string") lookupRangeType = "std::string";
             if (!isNormalDataType(lookupRangeType)) {
                 reportError("Invalid type inferred for range expression. Type '" + type + "' not found in normal_datatypes.", lineNumber, line);
                 isError = true;
                 return "";
             }
 
-            std::string id = generate_unique_id(); // Unique ID for the lambda variable
+            if (isIntegerLiteral(start_str) && isIntegerLiteral(end_str)) {
+                int start_val = std::stoi(start_str);
+                int end_val = std::stoi(end_str);
 
-            // Construct the C++ lambda to generate the vector for the range
+                std::ostringstream oss;
+                oss << "{";
+                if (start_val <= end_val) {
+                    for (int x = start_val; x <= end_val; ++x) {
+                        oss << x;
+                        if (x != end_val) oss << ", ";
+                    }
+                }
+                else {
+                    for (int x = start_val; x >= end_val; --x) {
+                        oss << x;
+                        if (x != end_val) oss << ", ";
+                    }
+                }
+                oss << "}";
+
+                convertedLine = line.substr(0, original_bracket_open_pos) +
+                    oss.str() +
+                    line.substr(original_bracket_close_pos + 1);
+                return convertedLine;
+            }
+
+            // **Runtime expansion (existing lambda logic)**
+            std::string id = generate_unique_id();
             std::string range_vec_lambda = "[&]() { std::vector<" + type + "> v" + id + ";";
-            range_vec_lambda += type + " start_val = " + start_str + "; "; // Use 'start_val' to avoid potential conflicts
-            range_vec_lambda += type + " end_val = " + end_str + "; ";     // Use 'end_val' to avoid potential conflicts
-
-            // Handle ascending and descending ranges
+            range_vec_lambda += type + " start_val = " + start_str + "; ";
+            range_vec_lambda += type + " end_val = " + end_str + "; ";
             range_vec_lambda += "if (start_val <= end_val) { ";
-            range_vec_lambda += "for(" + type + " i = start_val; i <= end_val; ++i) { ";
-            range_vec_lambda += "v" + id + ".push_back(i); ";
-            range_vec_lambda += "} } else { "; // Descending range
-            range_vec_lambda += "for(" + type + " i = start_val; i >= end_val; --i) { ";
-            range_vec_lambda += "v" + id + ".push_back(i); ";
-            range_vec_lambda += "} }"; // Close else and if blocks
+            range_vec_lambda += "for(" + type + " i = start_val; i <= end_val; ++i) { v" + id + ".push_back(i); } ";
+            range_vec_lambda += "} else { ";
+            range_vec_lambda += "for(" + type + " i = start_val; i >= end_val; --i) { v" + id + ".push_back(i); } ";
+            range_vec_lambda += "} return v" + id + "; }()";
 
-            range_vec_lambda += " return v" + id + "; }()"; // Immediate invocation of the lambda
-
-            // Perform the replacement in the original line
-            convertedLine = line.substr(0, original_bracket_open_pos) + range_vec_lambda + line.substr(original_bracket_close_pos + 1);
-            return convertedLine; // Return immediately after successful conversion
+            convertedLine = line.substr(0, original_bracket_open_pos) +
+                range_vec_lambda +
+                line.substr(original_bracket_close_pos + 1);
+            return convertedLine;
         }
     }
 
