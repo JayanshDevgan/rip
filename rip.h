@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <set>
 
 class RIP {
@@ -12,6 +13,9 @@ public:
 private:
     std::set<std::string> normalDataTypes;
     std::set<std::string> arrayDataTypes;
+
+    static std::vector<int> make_range(int start, int end);
+    std::unordered_map<std::string, std::vector<std::string>> parseRiparch(const std::string& filename);
 
     void loadDataTypes(const std::string& archFilename, bool& isError);
     bool isNormalDataType(const std::string& type);

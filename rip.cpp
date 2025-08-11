@@ -153,7 +153,7 @@ void RIP::compile(const std::string& filename, bool& isError) {
 
         std::string converted = convert(currentLine, i + 1, isError);
         if (isError) {
-            std::cerr << "Compilation aborted due to conversion errors." << std::endl;
+            std::cerr << "Compilation aborted due to compilation errors." << std::endl;
             outputFile.close();
             file.close();
             return;

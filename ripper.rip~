@@ -1,0 +1,77 @@
+@import "stdio";
+
+def ripper () void
+ {
+	int a = 10;
+	
+	if (a == 10)
+ {
+	// PRINTING WITH NEW LINE
+		println("RIP THE WORLD WITH NEW LINE!");
+	}
+	else
+ {
+		print("RIP THE WORLD WITHOUT NEW LINE!");
+	}
+
+	print("RIP THE WORLD!");
+}
+
+def main () int
+{ 
+	//[1..100] -> Range function make it using pre build range function in cpp
+
+	//int i = 7;
+	//int[] arr = [1..(1+i)];
+
+	/*for (int _=1; _<=(1+i); _++)
+	{
+		println(arr[_]);
+	}
+	println();
+	println();
+	println();
+	*/
+	/*for (int i = 0; i <= 10; i++) {
+		println(i);
+	}*/
+
+	/*println("fucker");
+	println("");
+	println();
+	println();
+	for (int j : [1..(93+i)]) {
+		println(j);
+	}
+	println("END");
+*/
+	/*int j = 1;
+	while (j < 5)
+	{	
+		println(j);
+		j++;
+	}
+	int k = -1;
+	do {
+	println(k);
+	k++;
+	} while(k <= 0);
+	println("END");*/
+	//ripper();
+
+
+	bool bFucked = True;
+	string name = "asdfa";
+	int num = 1;
+	float fnum = 25.0f;
+	char c = 'c';
+
+	if (bFucked) {
+	println(name);
+	println(num + fnum);
+	println(c);
+}
+
+
+	return 0;
+}

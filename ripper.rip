@@ -17,26 +17,31 @@ def ripper () void
 	print("RIP THE WORLD!");
 }
 
+def getStr () string
+{
+	return "SDF";
+}
+
 def main () int
 { 
 	//[1..100] -> Range function make it using pre build range function in cpp
 
-	int i = 7;
-	int[] arr = [1..(1+i)];
+	//int i = 7;
+	//int[] arr = [1..(1+i)];
 
-	for (int _=1; _<=(1+i); _++)
+	/*for (int _=1; _<=(1+i); _++)
 	{
 		println(arr[_]);
 	}
 	println();
 	println();
 	println();
-	
+	*/
 	/*for (int i = 0; i <= 10; i++) {
 		println(i);
 	}*/
 
-	println("fucker");
+	/*println("fucker");
 	println("");
 	println();
 	println();
@@ -44,7 +49,7 @@ def main () int
 		println(j);
 	}
 	println("END");
-
+*/
 	/*int j = 1;
 	while (j < 5)
 	{	
@@ -58,5 +63,21 @@ def main () int
 	} while(k <= 0);
 	println("END");*/
 	//ripper();
+
+
+	bool bFucked = true;
+	string name = "asdfa";
+	int num = 1;
+	float fnum = 25.0f;
+	char c = 'c';
+
+	if (bFucked) {
+	println(name);
+	println(getStr());
+	println(num + fnum);
+	println(c);
+}
+
+
 	return 0;
 }
